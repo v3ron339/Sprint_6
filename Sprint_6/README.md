@@ -15,17 +15,25 @@ UI-тесты сервиса "Самокат"
 
 ##  Структура проекта
 
-sprint-6/
+Sprint_6/
 │
-├── pages/                 # Page Object файлы (описание локаторов и действий)
-│   ├── home_page.py
-│   ├── order_page.py
-│   └── faq_page.py
+├── data/
+│   └── urls.py
 │
-├── tests/                 # Автоматизированные тесты
-│   ├── test_order_scooter.py
-│   └── test_faq_section.py
+├── locators/
+│   ├── main_page_locators.py
+│   └── order_page_locators.py
 │
-├── conftest.py            # Фикстуры Selenium WebDriver
-├── requirements.txt       # Зависимости проекта
-└── README.md              # Документация
+├── pages/
+│   ├── base_page.py
+│   ├── main_page.py
+│   └── order_page.py
+│
+├── tests/
+│   ├── test_faq_questions.py
+│   └── test_order_flow.py
+│
+├── conftest.py
+├── requirements.txt
+├── README.md
+└── allure_results/

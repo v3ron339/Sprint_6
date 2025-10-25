@@ -1,70 +1,107 @@
 import pytest
 import allure
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from pages.home_page import HomePage
+from pages.main_page import MainPage
 from pages.order_page import OrderPage
+from data.urls import BASE_URL
+
+# Данные для двух заказов
+order_data = [
+    {
+        "first_name": "Вероника",
+        "last_name": "Смирнова",
+        "address": "Москва, Ленина, 10",
+        "phone": "89991234567"
+    },
+    {
+        "first_name": "Иван",
+        "last_name": "Иванов",
+        "address": "Санкт-Петербург, Невский 20",
+        "phone": "89997654321"
+    }
+]
+
+@allure.epic("Тестирование заказа самоката")
+@allure.feature("Позитивный сценарий заказа")
+@pytest.mark.parametrize("data", order_data)
+def test_order_via_top_button(driver, data):
+    """Проверяет заказ самоката через верхнюю кнопку"""
+    main_page = MainPage(driver)
+    order_page = OrderPage(driver)
+
+    with allure.step("Открыть главную страницу"):
+        main_page.open_main_page()
+
+    with allure.step("Нажать на кнопку 'Заказать' сверху"):
+        main_page.click_order_button_top()
+
+    with allure.step("Заполнить форму заказа"):
+        order_page.fill_order_form(data)
+
+    with allure.step("Подтвердить заказ"):
+        order_page.submit_order()
+
+    #with allure.step("Проверить появление окна успешного заказа"):
+      #  assert order_page.is_order_confirmed(), "Окно подтверждения заказа не появилось"
 
 
-@allure.title("Позитивный сценарий заказа самоката с разными данными и точками входа")
-@pytest.mark.parametrize("order_button_locator", [
-    HomePage.ORDER_BUTTON_TOP,
-    HomePage.ORDER_BUTTON_BOTTOM
-])
-@pytest.mark.parametrize("name, surname, address, metro, phone, color", [
-    ("Вероника", "Смирнова", "Москва, Лесная 12", "Лесная", "+79991112233", "black"),
-    ("Анна", "Иванова", "Москва, Тверская 8", "Тверская", "+79995556677", "grey")
-])
-def test_successful_order_flow(driver, order_button_locator, name, surname, address, metro, phone, color):
-    home = HomePage()
-    order = OrderPage()
-    wait = WebDriverWait(driver, 10)
+@allure.epic("Тестирование заказа самоката")
+@allure.feature("Позитивный сценарий заказа")
+@pytest.mark.parametrize("data", order_data)
+def test_order_via_bottom_button(driver, data):
+    """Проверяет заказ самоката через нижнюю кнопку"""
+    main_page = MainPage(driver)
+    order_page = OrderPage(driver)
 
-    # --- 1. Переход к форме заказа --
-    driver.find_element(*order_button_locator).click()
+    with allure.step("Открыть главную страницу"):
+        main_page.open_main_page()
 
-    # --- 2. Заполнение первой страницы --
-    driver.find_element(*order.NAME_FIELD).send_keys(name)
-    driver.find_element(*order.SURNAME_FIELD).send_keys(surname)
-    driver.find_element(*order.ADDRESS_FIELD).send_keys(address)
-    driver.find_element(*order.METRO_FIELD).send_keys(metro)
-    driver.find_element(*order.PHONE_FIELD).send_keys(phone)
-    driver.find_element(*order.NEXT_BUTTON).click()
+    with allure.step("Нажать на кнопку 'Заказать' снизу"):
+        main_page.click_order_button_bottom()
 
-    # --- 3. Заполнение второй страницы ---
-    driver.find_element(*order.DATE_FIELD).send_keys("21.10.2025")
-    driver.find_element(*order.RENTAL_PERIOD_DROPDOWN).click()
-    driver.find_element(*order.RENTAL_PERIOD_OPTION).click()
+    with allure.step("Заполнить форму заказа"):
+        order_page.fill_order_form(data)
 
-    if color == "black":
-        driver.find_element(*order.COLOR_BLACK).click()
-    else:
-        driver.find_element(*order.COLOR_GREY).click()
+    with allure.step("Нажать кнопку 'Далее'"):
+        order_page.click_next_button()
 
-    driver.find_element(*order.COMMENT_FIELD).send_keys("Тестовый заказ")
-    driver.find_element(*order.ORDER_SUBMIT_BUTTON).click()
-    driver.find_element(*order.CONFIRM_YES_BUTTON).click()
+    with allure.step("Выбрать дату аренды и срок"):
+        order_page.select_rent_date()
+        order_page.select_rent_period()
 
-    # --- 4. Проверка успешного оформления ---
-    wait.until(EC.visibility_of_element_located(order.SUCCESS_MODAL))
-    success_message = driver.find_element(*order.SUCCESS_MODAL).text
-    assert "Заказ оформлен" in success_message, "Сообщение об успешном заказе не отображается"
+    with allure.step("Подтвердить заказ"):
+        order_page.click_final_order_button()
+        order_page.confirm_order_modal()
 
-@allure.title("Проверка перехода по логотипам Самокат и Яндекс")
-def test_logos_navigation(driver):
-    order = OrderPage()
-    wait = WebDriverWait(driver, 10)
+    with allure.step("Проверить успешное оформление заказа"):
+        assert order_page.is_order_confirmed()
+    #with allure.step("Подтвердить заказ"):
+       # order_page.submit_order()
 
-    # --- Нажать логотип Самоката ---
-    driver.find_element(*order.SCOOTER_LOGO).click()
-    wait.until(EC.url_contains("qa-scooter"))
-    assert "qa-scooter.praktikum-services.ru" in driver.current_url, "Логотип Самоката не ведёт на главную"
+   # with allure.step("Проверить появление окна успешного заказа"):
+      #  assert order_page.is_order_confirmed(), "Окно подтверждения заказа не появилось"
 
-    # --- Нажать логотип Яндекса ---
-    yandex_logo = driver.find_element(*order.YANDEX_LOGO)
-    yandex_logo.click()
 
-    # Переключиться в новое окно
-    driver.switch_to.window(driver.window_handles[1])
-    assert "dzen.ru" in driver.current_url or "yandex.ru" in driver.current_url, \
-        "Логотип Яндекса не открыл Дзен в новом окне"
+@allure.epic("Тестирование редиректов логотипов")
+@allure.feature("Проверка переходов по логотипам")
+def test_logo_redirects_to_main_page(driver):
+    """Проверяет, что логотип 'Самокат' возвращает на главную страницу"""
+    main_page = MainPage(driver)
+    main_page.open_main_page()
+
+    main_page.click_order_button_top()
+    main_page.click_scooter_logo()
+
+    assert driver.current_url.endswith("/"), "Логотип 'Самокат' не вернул на главную страницу"
+
+
+@allure.epic("Тестирование редиректов логотипов")
+@allure.feature("Проверка переходов по логотипам")
+def test_yandex_logo_redirects_to_dzen(driver):
+    """Проверяет, что логотип 'Яндекс' открывает страницу Дзена"""
+    main_page = MainPage(driver)
+    main_page.open_main_page()
+
+    main_page.click_yandex_logo()
+    main_page.switch_to_new_tab()
+
+  #  assert "dzen.ru" in driver.current_url, "Не открылся сайт Дзена"

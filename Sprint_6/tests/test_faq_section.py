@@ -1,37 +1,28 @@
 import pytest
 import allure
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from pages.home_page import HomePage
+from pages.main_page import MainPage
+from data.urls import BASE_URL
+from data.faq_data import faq_questions
 
 
-@allure.title("Тесты раздела 'Вопросы о важном'")
-@pytest.mark.usefixtures("driver")
-class TestFAQSection:
+@allure.epic("Тестирование раздела FAQ")
+@allure.feature("Раскрытие вопросов в разделе 'Вопросы о важном'")
+@pytest.mark.parametrize("question_text, expected_answer", faq_questions)
+def test_faq_expands_correct_answer(driver, question_text, expected_answer):
+    """
+    Проверяет, что при нажатии на вопрос FAQ открывается правильный ответ.
+    """
+    page = MainPage(driver)
 
-    @pytest.mark.parametrize("question, answer", [
-        (HomePage.QUESTION_1, HomePage.ANSWER_1),
-        (HomePage.QUESTION_2, HomePage.ANSWER_2),
-        (HomePage.QUESTION_3, HomePage.ANSWER_3),
-        (HomePage.QUESTION_4, HomePage.ANSWER_4),
-        (HomePage.QUESTION_5, HomePage.ANSWER_5),
-        (HomePage.QUESTION_6, HomePage.ANSWER_6),
-        (HomePage.QUESTION_7, HomePage.ANSWER_7),
-        (HomePage.QUESTION_8, HomePage.ANSWER_8),
-    ])
-    def test_faq_answer_visible_after_click(self, driver, question, answer):
-        """Проверка: при нажатии на стрелку открывается текст ответа."""
-        wait = WebDriverWait(driver, 5)
+    with allure.step("Открыть главную страницу"):
+        page.open_main_page()
 
-        # Прокрутить страницу вниз до раздела FAQ----
-        faq_block = driver.find_element(*HomePage.FAQ_BLOCK)
-        driver.execute_script("arguments[0].scrollIntoView();", faq_block)
+    with allure.step("Прокрутить до раздела FAQ"):
+        page.scroll_to_faq_section()
 
-        # Нажать на вопрос
-        driver.find_element(*question).click()
+    with allure.step(f"Нажать на вопрос: {question_text}"):
+        page.click_faq_question(question_text)
 
-        # Проверить, что текст стал видимым
-        wait.until(EC.visibility_of_element_located(answer))
-        is_visible = driver.find_element(*answer).is_displayed()
-
-        assert is_visible, f"Ответ на вопрос {question} не открылся!"
+    with allure.step("Проверить текст ответа"):
+        answer_text = page.get_faq_answer_text(question_text)
+        assert expected_answer in answer_text, f"Ожидалось: {expected_answer}, получено: {answer_text}"
