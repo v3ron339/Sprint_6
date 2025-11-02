@@ -69,9 +69,9 @@ class OrderPageLocators:
     # Подтверждение заказа
     ORDER_CONFIRM_BUTTON = (By.XPATH, "//button[contains(text(), 'Заказать')]")
     YES_BUTTON = (By.XPATH, "//button[text()='Да']")
-    YS_BUTTON = (By.XPATH, "//button[text()='Заказать']")
-
-
+    ORDER_YES_BUTTON = (By.XPATH, "//div[contains(@class,'Order_Modal__YZ-d3')]//button[text()='Да']")
+    ORDER_SUBMIT_BUTTON = (By.XPATH, "//div[contains(@class,'Order_Buttons__1xGrp')]//button[text()='Заказать']")
+    ORDER_MODAL_TITLE = (By.XPATH, "//*[contains(text(),'Заказ оформлен')]")
     # Окно успешного заказа
     ORDER_SUCCESS_POPUP = (By.XPATH, "//div[contains(text(), 'Заказ оформлен')]")
 
@@ -83,3 +83,5 @@ class OrderPageLocators:
 
 # Баннер cookies
     COOKIE_BANNER_BUTTON = (By.ID, "rcc-confirm-button")
+    
+    from selenium.webdriver.common.by import By
