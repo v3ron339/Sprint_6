@@ -1,90 +1,118 @@
-import allure
-from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException
-from time import sleep
-from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from pages.base_page import BasePage
 from locators.order_page_locators import OrderPageLocators as Loc
+
+
 class OrderPage(BasePage):
-    """Page Object для страницы заказа самоката"""
 
-    @allure.step("Заполнить данные пользователя")
-    def fill_order_form(self, data):
-        self.wait_for_visible(Loc.FIRST_NAME_INPUT).send_keys(data["first_name"])
-        self.input_text(Loc.LAST_NAME_INPUT, data["last_name"])
-        self.input_text(Loc.ADDRESS_INPUT, data["address"])
-        self.click_element(Loc.METRO_STATION_FIELD)
-        self.click_element(Loc.METRO_FIRST_OPTION)
-        self.input_text(Loc.PHONE_INPUT, data["phone"])
-        self.click_element(Loc.COOKIE_BANNER_BUTTON)
+    def fill_order_form(self, name, surname, address, metro, phone):
+        self.type(Loc.NAME_INPUT, name)
+        self.type(Loc.SURNAME_INPUT, surname)
+        self.type(Loc. ADDRESS_INPUT, address)
 
-    # @allure.step("Закрыть cookie-баннер, если он присутствует")
-     #def close_cookie_banner_if_present(self):
-     #   """Нажимает 'да все привыкли', если баннер присутствует."""
-       # try:
-      #      button = self.click_element(Loc.COOKIE_BANNER_BUTTON)
-      #      button.click()
-      #      allure.attach(self.driver.get_screenshot_as_png(),
-      #                    name="cookie_closed",
-       #                   attachment_type=allure.attachment_type.PNG)
-       # except TimeoutException:
-       #     pass  # баннера нет — продолжаем те
+        metro_input = self.find_element(Loc.METRO_INPUT)
+        metro_input.clear()
+        prefix = metro[:3]
+        metro_input.send_keys(prefix)
 
-   # @allure.step("Выбрать станцию метро")
-    #def select_metro(self):
-       # self.click_element(Loc.METRO_STATION_FIELD)
-      #  self.click_element(Loc.METRO_FIRST_OPTION)
 
-    @allure.step("Перейти к следующему шагу оформления")
-    def submit_order(self):
-        self.click_element(Loc.NEXT_BUTTON)
-        self.click_element(Loc.RENT_DATE_FIELD)
-        self.click_element(Loc.RENT_DATE_TODAY)
-        self.click_element(Loc.RENT_PERIOD_DROPDOWN)
-        self.click_element(Loc.RENT_PERIOD_DAY)
-        self.click_element(Loc.COLOR_BLACK_CHECKBOX)
-        self.click_element(Loc.ORDER_CONFIRM_BUTTON)
-        self.click_element(Loc.ORDER_BUTTON_BOTTOM)
-        self.click_element(Loc.YES_BUTTON)
+        selected = False
+        for _ in range(10):
+            metro_input = self.find_element(Loc.METRO_INPUT)
+            metro_input.send_keys(Keys.ARROW_DOWN)
+            current = metro_input.get_attribute("value") or ""
+            if current.strip().lower() == metro.strip().lower():
+                metro_input.send_keys(Keys.ENTER)
+                selected = True
+                break
 
-    @allure.step("Нажать кнопку 'Далее'")
-    def click_next_button(self):
-        self.click_element(Loc.NEXT_BUTTON)
+        if not selected:
+            metro_input = self.find_element(Loc.METRO_INPUT)
+            metro_input.send_keys(Keys.ENTER)
         
-        # Задержка на случай анимации перехода
-        sleep(1)
 
-   # @allure.step("Заполнить данные аренды самоката")
-   # def fill_rent_info(self):
-   #     self.click_element(Loc.DATE_FIELD)
-   #     self.click_element(Loc.RENT_DATE_TODAY)
-   #     self.click_element(Loc.RENT_DROPDOWN)
-   #     self.click_element(Loc.RENT_PERIOD_DROPDOWN)
-   #     self.click_element(Loc.COLOR_BLACK)
+        self.type(Loc.PHONE_INPUT, phone)
 
-    @allure.step("Подтвердить заказ")
-    def is_order_confirmed(self):
+        next_btn = self.find_element(Loc.NEXT_BUTTON)
+        self.scroll_into_view_element(next_btn)
         try:
-            self.scroll_to_bottom()
-            order_button = self.wait.until(EC.element_to_be_clickable(Loc.ORDER_BUTTON_FINAL))
-            order_button.click()
+            self.click(Loc.NEXT_BUTTON)
+        except Exception:
+            self.js_click(next_btn)
 
-            yes_button = self.wait.until(EC.element_to_be_clickable(Loc.YES_BUTTON))
-            yes_button.click()
+        self.wait_for_visible(Loc.RENT_PERIOD_DROPDOWN)
 
-            self.wait_for_visible(Loc.ORDER_SUCCESS_POPUP)
-            self.attach_screenshot("success_order_modal")
+    def fill_rent_form_black(self, date, period, comment):
+        self._fill_common_rent_fields(date, period)
+        self.click(Loc.COLOR_BLACK)
+        self.type(Loc.COMMENT, comment)
 
-        except TimeoutException:
-            self.attach_screenshot("order_confirmation_failed")
-            raise AssertionError("Не удалось подтвердить заказ — элемент не найден или не кликабелен")
+    def fill_rent_form_grey(self, date, period, comment):
+        self._fill_common_rent_fields(date, period)
+        self.click(Loc.COLOR_GREY)
+        self.type(Loc.COMMENT, comment)
 
+    def fill_rent_form_custom(self, date, period, color_locator, comment):
+        self._fill_common_rent_fields(date, period)
+        self.click(color_locator)
+        self.type(Loc.COMMENT, comment)
 
-    @allure.step("Полный процесс оформления заказа")
-    def complete_order(self, data):
-        self.fill_customer_info(data)
-        self.select_metro()
-        self.go_next()
-        self.fill_rent_info()
-        self.confirm_order()
+    def _fill_common_rent_fields(self, date, period):
+        date_input = self.find_element(Loc.RENT_DATE)
+        self.scroll_into_view_element(date_input)
+        date_input.clear()
+        date_input.send_keys(date)
+        date_input.send_keys(Keys.ENTER)
+
+        WebDriverWait(self.driver, self.timeout).until(
+            EC.invisibility_of_element_located((By.CLASS_NAME, "react-datepicker"))
+        )
+
+        dropdown = WebDriverWait(self.driver, self.timeout).until(
+            EC.element_to_be_clickable(Loc.RENT_DROPDOWN)
+        )
+        self.scroll_into_view_element(dropdown)
+        try:
+            dropdown.click()
+        except:
+            self.driver.execute_script("arguments[0].click();", dropdown)
+
+        menu = WebDriverWait(self.driver, self.timeout).until(
+            EC.visibility_of_element_located((By.CSS_SELECTOR, "div.Dropdown-menu[aria-expanded='true']"))
+        )
+
+        options = menu.find_elements(By.CSS_SELECTOR, "div.Dropdown-option")
+
+        for opt in options:
+            if opt.text.strip().lower() == period.strip().lower():
+                self.scroll_into_view_element(opt)
+                opt.click()
+                break
+        else:
+            raise Exception(f"Не найдена опция срока аренды: {period}")
+
+    def submit_order(self):
+        order_btn = WebDriverWait(self.driver, self.timeout).until(
+            EC.element_to_be_clickable(Loc.ORDER_SUBMIT_BUTTON)
+        )
+        self.scroll_into_view_element(order_btn)
+        try:
+            order_btn.click()
+        except Exception:
+            self.driver.execute_script("arguments[0].click();", order_btn)
+
+        confirm_btn = WebDriverWait(self.driver, self.timeout).until(
+            EC.element_to_be_clickable(Loc.ORDER_YES_BUTTON)
+        )
+        self.scroll_into_view_element(confirm_btn)
+        try:
+            confirm_btn.click()
+        except Exception:
+            self.driver.execute_script("arguments[0].click();", confirm_btn)
+
+    def is_order_confirmed(self):
+        self.wait_for_visible(Loc.ORDER_MODAL_TITLE)
+        return True

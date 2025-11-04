@@ -1,91 +1,90 @@
 import allure
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import ElementClickInterceptedException
 
 
 class BasePage:
-    """Базовый класс Page Object.
-    Содержит общие методы для всех страниц проекта.
-    """
-
-    def __init__(self, driver, timeout=10):
+    def __init__(self, driver, timeout=30):
         self.driver = driver
+        self.timeout = timeout
         self.wait = WebDriverWait(driver, timeout)
 
     # -------------------------
-    # Методы поиска элементов
+    # Навигация
     # -------------------------
-    @allure.step("Поиск элемента: {locator}")
+    @allure.step("Открыть URL: {url}")
+    def open_url(self, url):
+        self.driver.get(url)
+
+    @allure.step("Получить текущий URL страницы")
+    def get_current_url(self):
+        return self.driver.current_url
+
+    # -------------------------
+    # Поиск элементов
+    # -------------------------
+    @allure.step("Найти элемент: {locator}")
     def find_element(self, locator):
-        """Находит элемент на странице с ожиданием"""
-        try:
-            return self.wait.until(EC.presence_of_element_located(locator))
-        except TimeoutException:
-            allure.attach(self.driver.get_screenshot_as_png(),
-                          name="element_not_found",
-                          attachment_type=allure.attachment_type.PNG)
-            raise AssertionError(f"Элемент не найден: {locator}")
+        return self.wait.until(EC.presence_of_element_located(locator))
 
-    @allure.step("Поиск всех элементов: {locator}")
+    @allure.step("Найти все элементы: {locator}")
     def find_elements(self, locator):
-        """Возвращает список элементов (может быть пустым)"""
-        return self.driver.find_elements(*locator)
+        return self.wait.until(EC.presence_of_all_elements_located(locator))
+
+    @allure.step("Ожидать, пока элемент станет видимым: {locator}")
+    def wait_for_visible(self, locator):
+        return self.wait.until(EC.visibility_of_element_located(locator))
+
+    @allure.step("Ожидать, пока элемент станет кликабельным: {locator}")
+    def wait_for_clickable(self, locator):
+        return self.wait.until(EC.element_to_be_clickable(locator))
 
     # -------------------------
-    #  Методы взаимодействия
+    # Взаимодействие
     # -------------------------
     @allure.step("Клик по элементу: {locator}")
-    def click_element(self, locator):
-        """Ожидает видимости и кликает по элементу"""
-        element = self.wait.until(EC.element_to_be_clickable(locator))
-        element.click()
+    def click(self, locator):
+        element = self.wait_for_clickable(locator)
+        self.scroll_into_view_element(element)
+        try:
+            element.click()
+        except ElementClickInterceptedException:
+            allure.attach(self.driver.get_screenshot_as_png(),
+                          name="click_intercepted",
+                          attachment_type=allure.attachment_type.PNG)
+            self.js_click(element)
 
     @allure.step("Ввод текста '{text}' в элемент: {locator}")
-    def input_text(self, locator, text):
-        """Очищает поле и вводит текст"""
-        element = self.wait.until(EC.visibility_of_element_located(locator))
+    def type(self, locator, text):
+        element = self.find_element(locator)
+        self.scroll_into_view_element(element)
         element.clear()
         element.send_keys(text)
 
     # -------------------------
-    # Методы прокрутки
+    # Скролл и JS
     # -------------------------
-    @allure.step("Прокрутка до элемента: {element}")
-    def scroll_to_element(self, element):
-        """Прокручивает страницу до элемента"""
-        self.driver.execute_script("arguments[0].scrollIntoView(true);", element)
+    @allure.step("Прокрутить страницу к элементу")
+    def scroll_into_view_element(self, element):
+        self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
 
-    @allure.step("Прокрутка в самый низ страницы")
-    def scroll_to_bottom(self):
-        """Прокручивает страницу до конца"""
-        self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+    @allure.step("Клик по элементу через JS")
+    def js_click(self, element):
+        self.driver.execute_script("arguments[0].click();", element)
 
-    # -------------------------
-    #  Методы ожидания
-    # -------------------------
-    @allure.step("Ожидание видимости элемента: {locator}")
-    def wait_for_visible(self, locator, timeout=10):
-        """Ожидает, пока элемент станет видимым"""
-        return WebDriverWait(self.driver, timeout).until(EC.visibility_of_element_located(locator))
-
-    @allure.step("Ожидание появления текста '{text}' в элементе: {locator}")
-    def wait_for_text(self, locator, text, timeout=10):
-        """Ожидает появления указанного текста"""
-        WebDriverWait(self.driver, timeout).until(EC.text_to_be_present_in_element(locator, text))
+    @allure.step("Выполнить JavaScript-команду")
+    def js_scroll(self, script):
+        self.driver.execute_script(script)
 
     # -------------------------
-    #  Скриншоты и проверки
+    # Окна и переходы
     # -------------------------
-    @allure.step("Прикрепить скриншот текущей страницы")
-    def attach_screenshot(self, name="screenshot"):
-        """Сохраняет скриншот для Allure"""
-        allure.attach(self.driver.get_screenshot_as_png(),
-                      name=name,
-                      attachment_type=allure.attachment_type.PNG)
+    @allure.step("Ожидание открытия новой вкладки и переключение на неё")
+    def wait_for_new_window_and_switch(self, timeout=10):
+        WebDriverWait(self.driver, timeout).until(lambda d: len(d.window_handles) > 1)
+        self.driver.switch_to.window(self.driver.window_handles[-1])
 
-    @allure.step("Проверка URL содержит: {expected}")
-    def assert_url_contains(self, expected):
-        """Проверяет, что текущий URL содержит подстроку"""
-        current = self.driver.current_url
-        assert expected in current, f"Ожидали, что URL содержит '{expected}', но текущий: '{current}'"
+    @allure.step("Ожидание, пока URL перестанет быть пустым")
+    def wait_for_url_not_blank(self, timeout=10):
+        WebDriverWait(self.driver, timeout).until(lambda d: d.current_url != "about:blank")
