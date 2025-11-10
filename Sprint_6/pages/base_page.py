@@ -17,6 +17,16 @@ class BasePage:
     def open_url(self, url):
         self.driver.get(url)
 
+    @allure.step("Клик по элементу: {locator} с безопасным режимом")
+    def safe_click(self, locator):
+        element = self.wait.until(EC.element_to_be_clickable(locator))
+        self.scroll_into_view_element(element)
+        try:
+            element.click()
+        except ElementClickInterceptedException:
+            self.driver.execute_script("arguments[0].click();", element)
+
+
     @allure.step("Получить текущий URL страницы")
     def get_current_url(self):
         return self.driver.current_url

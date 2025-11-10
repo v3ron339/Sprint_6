@@ -84,4 +84,6 @@ class OrderPageLocators:
 # Баннер cookies
     COOKIE_BANNER_BUTTON = (By.ID, "rcc-confirm-button")
     
-    from selenium.webdriver.common.by import By
+    DATEPICKER_POPUP = (By.CLASS_NAME, "react-datepicker")
+
+    RENT_OPTION_BY_TEXT = (  By.XPATH, "//div[contains(@class,'Dropdown-option') and normalize-space(text())='{}']")
